@@ -1,24 +1,23 @@
 # 🚗 VehicleVision-AI Backend
 
-An Intelligent Media Processing Pipeline built using **Node.js**, **Express.js**, **MySQL**, **Redis (BullMQ)**, **Sharp**, **Tesseract OCR**, and **YOLO AI**.
+An intelligent asynchronous media processing backend built using **Node.js**, **Express.js**, **MySQL**, **Redis (BullMQ)**, **Sharp**, **Tesseract OCR**, and **YOLO AI**.
 
-This project processes uploaded vehicle images asynchronously and performs multiple image analysis checks before returning structured results.
+The system allows users to upload vehicle images, processes them asynchronously, performs multiple image quality checks, detects objects, extracts vehicle registration numbers using OCR, and stores the results in MySQL.
 
 ---
 
 # Features
 
 - Image Upload API
-- Asynchronous Image Processing (BullMQ + Redis)
+- Asynchronous Processing using BullMQ & Redis
 - MySQL Database Integration
-- Image Metadata Storage
-- OCR for Vehicle Number Detection
+- OCR-based Vehicle Number Extraction
 - Indian Vehicle Number Validation
-- AI Object Detection (YOLO)
+- YOLO AI Object Detection
 - Blur Detection
 - Brightness Analysis
-- Duplicate Image Detection using SHA-256 Hash
 - Image Dimension Analysis
+- Duplicate Image Detection using SHA-256
 - Processing Status API
 - Processing Result API
 
@@ -26,21 +25,21 @@ This project processes uploaded vehicle images asynchronously and performs multi
 
 # Tech Stack
 
-Backend
+## Backend
 - Node.js
 - Express.js
 
-Database
+## Database
 - MySQL
 
-Queue
+## Queue
 - Redis
 - BullMQ
 
-AI / Image Processing
+## AI / Image Processing
 - Sharp
 - Tesseract.js
-- YOLO
+- YOLOv8
 - Crypto (SHA-256)
 
 ---
@@ -61,26 +60,121 @@ VehicleVision-AI
 │   ├── utils
 │   └── workers
 │
-├── server.js
 ├── package.json
-└── README.md
+├── server.js
+├── README.md
+└── .env
 ```
+
+---
+
+# Architecture
+
+The project follows a modular backend architecture.
+
+```
+Client
+   │
+   ▼
+Upload API (Express)
+   │
+   ▼
+Store Image Metadata (MySQL)
+   │
+   ▼
+Add Job to Redis Queue (BullMQ)
+   │
+   ▼
+Background Worker
+   │
+   ├── Image Analysis
+   ├── Duplicate Detection
+   ├── YOLO Object Detection
+   ├── OCR
+   └── Vehicle Number Validation
+   │
+   ▼
+Update MySQL
+   │
+   ▼
+Status API / Result API
+```
+
+---
+
+# Service Flow
+
+1. User uploads a vehicle image.
+2. Server stores the uploaded image.
+3. Image metadata is saved in MySQL.
+4. A unique Processing ID is generated.
+5. Processing job is added to Redis using BullMQ.
+6. Upload API immediately returns a response.
+7. Background worker processes the image asynchronously.
+8. Image quality analysis is performed.
+9. Duplicate image detection is executed.
+10. YOLO detects objects in the image.
+11. OCR extracts the vehicle number.
+12. Vehicle number is validated.
+13. Results are stored in MySQL.
+14. Client fetches processing status and final result.
 
 ---
 
 # Processing Flow
 
-1. User uploads an image.
-2. Image metadata is stored in MySQL.
-3. A Processing ID is generated.
-4. Job is added to Redis Queue.
-5. Worker processes image asynchronously.
-6. Image analysis is performed.
-7. OCR extracts vehicle number.
-8. Vehicle number is validated.
-9. Duplicate image detection is performed.
-10. Results are stored in MySQL.
-11. User fetches processing status and results.
+```
+Image Upload
+      │
+      ▼
+Save Metadata
+      │
+      ▼
+Redis Queue
+      │
+      ▼
+Worker
+      │
+      ├── Blur Detection
+      ├── Brightness Analysis
+      ├── Duplicate Detection
+      ├── YOLO Detection
+      ├── OCR
+      └── Validation
+      │
+      ▼
+Update Database
+      │
+      ▼
+Result API
+```
+
+---
+
+# Queue Strategy
+
+The upload API returns immediately after storing image metadata and adding the job to BullMQ.
+
+Heavy image processing tasks are executed by background workers.
+
+Advantages:
+
+- Non-blocking API
+- Better scalability
+- Improved response time
+- Multiple workers can process jobs concurrently
+
+---
+
+# Major Design Decisions
+
+- Used BullMQ for asynchronous processing.
+- Redis acts as the message broker.
+- MySQL stores image metadata and analysis results.
+- OCR is implemented using Tesseract.js.
+- YOLO is used for AI object detection.
+- SHA-256 hashing is used for duplicate image detection.
+- REST APIs are designed separately for upload, status, and results.
 
 ---
 
@@ -90,6 +184,12 @@ Clone the repository
 
 ```bash
 git clone <repository-url>
+```
+
+Go to project
+
+```bash
+cd VehicleVision-AI
 ```
 
 Install dependencies
@@ -120,7 +220,7 @@ node src/workers/imageWorker.js
 
 # Environment Variables
 
-Create a `.env` file
+Create a `.env` file.
 
 ```env
 PORT=5000
@@ -140,55 +240,88 @@ REDIS_PORT=6379
 
 ## Upload Image
 
-POST
+### Request
 
 ```
-/api/upload
+POST /api/upload
 ```
 
-Response
+### Response
 
 ```json
 {
-    "processingId":"UUID",
-    "status":"pending"
+  "success": true,
+  "processingId": "UUID",
+  "status": "pending"
 }
 ```
 
 ---
 
-## Get Processing Status
+## Processing Status
 
-GET
+### Request
 
 ```
-/api/status/:processingId
+GET /api/status/:processingId
+```
+
+### Response
+
+```json
+{
+  "success": true,
+  "status": "completed"
+}
 ```
 
 ---
 
-## Get Processing Result
+## Processing Result
 
-GET
+### Request
 
 ```
-/api/result/:processingId
+GET /api/result/:processingId
+```
+
+### Response
+
+```json
+{
+  "success": true,
+  "processingId": "UUID",
+  "status": "completed",
+  "vehicleNumber": "MH12NW8556",
+  "analysis": {
+    "width": 640,
+    "height": 480,
+    "brightnessScore": 122.5,
+    "blurScore": 96
+  }
+}
 ```
 
 ---
 
 # AI Usage Disclosure
 
-AI was used to assist with:
+AI tools were used during development for:
 
-- BullMQ queue integration
+- BullMQ implementation guidance
 - OCR integration
-- Image analysis implementation
-- Duplicate detection approach
-- Vehicle number validation logic
-- API design guidance
+- Image analysis logic
+- API design suggestions
+- Documentation generation
+- Debugging assistance
 
-All generated code was manually reviewed, tested, debugged, and integrated into the project.
+### Where AI Output Was Incorrect
+
+Some AI-generated OCR validation logic did not correctly handle Indian vehicle registration formats. Minor implementation suggestions also required modification to fit the project architecture.
+
+### Validation Process
+
+All AI-generated code was manually reviewed, integrated, tested, and verified using Postman and the provided sample vehicle images before being accepted.
 
 ---
 
@@ -196,35 +329,79 @@ All generated code was manually reviewed, tested, debugged, and integrated into 
 
 Due to limited development time:
 
-- Implemented heuristic-based duplicate detection using SHA-256.
-- Vehicle number validation uses regex for Indian registration format.
-- AI detection uses a lightweight YOLO model.
-- Processing is asynchronous using BullMQ.
+- Used SHA-256 hashing for duplicate detection instead of perceptual hashing.
+- Used regex validation for Indian vehicle numbers.
+- Used a lightweight YOLO model for faster inference.
+- Images are stored locally instead of cloud storage.
+- Single worker instance is used.
+
+---
+
+# Scalability Considerations
+
+With additional development time:
+
+- Deploy multiple BullMQ workers.
+- Store images in cloud storage (AWS S3, Azure Blob).
+- Use managed Redis.
+- Use managed MySQL.
+- Add caching for API responses.
+- Implement horizontal scaling.
+
+---
+
+# Failure Handling
+
+The application handles failures by:
+
+- Returning proper HTTP status codes.
+- Updating processing status as **failed**.
+- Logging worker errors.
+- Returning **NOT_DETECTED** when OCR fails.
+- Rejecting invalid vehicle numbers using regex.
+- Detecting duplicate images before processing.
+
+---
+
+# Assumptions
+
+- Images are uploaded individually.
+- Supported image formats are JPG and PNG.
+- Redis and MySQL are available before running the application.
+- Vehicle registration numbers follow Indian registration standards.
+- Users poll the Status API before requesting the Result API.
 
 ---
 
 # Future Improvements
 
-- Screenshot detection
-- Photo-of-photo detection
-- Image tampering detection
-- Confidence scoring
-- Automated testing
+- Screenshot Detection
+- Photo-of-Photo Detection
+- Image Tampering Detection
+- Confidence Scoring
+- Retry Mechanism
+- Automated Unit Tests
 - Docker Compose
-- Cloud Storage
-- Deployment
+- Cloud Deployment
+- Dashboard UI
+- Authentication
+- Rate Limiting
+- Monitoring & Logging
 
 ---
 
 # Sample Workflow
 
-1. Upload Image
-2. Receive Processing ID
-3. Check Processing Status
-4. Fetch Processing Result
+1. Upload vehicle image.
+2. Receive Processing ID.
+3. Poll Status API.
+4. Fetch processing result.
+5. Display vehicle number and image analysis.
 
 ---
 
 # Author
 
-Rakshitha
+**Rakshitha**
+
+Backend Assignment – VehicleVision-AI
