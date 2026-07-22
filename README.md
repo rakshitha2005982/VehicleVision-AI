@@ -400,6 +400,45 @@ The application handles failures by:
 
 ---
 
+## Output
+
+### Dashboard
+
+![Dashboard](images/dashboard.png)
+
+---
+
+### Input Image 1
+
+![Input 1](images/input1.png)
+
+### Analysis Result 1
+
+![Output 1](images/output1.png)
+
+---
+
+### Input Image 2
+
+![Input 2](images/input2.png)
+
+### Analysis Result 2
+
+![Output 2](images/output2.png)
+
+---
+
+### Input Image 3
+
+![Input 3](images/input3.png)
+
+### Analysis Result 3
+
+![Output 3](images/output3.png)
+
+---
+
+
 # Author
 
 **Rakshitha**
