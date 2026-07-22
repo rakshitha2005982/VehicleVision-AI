@@ -6,7 +6,7 @@ const runAIDetection = (imagePath, options = {}) => {
 
     return new Promise((resolve) => {
 
-        const scriptPath = options.scriptPath || path.join(__dirname, "ai", "detect.py");
+        const scriptPath = options.scriptPath || path.join(__dirname, "python", "detect.py");
 
         if (!fs.existsSync(scriptPath)) {
             console.warn("⚠️ AI detection script not found. Skipping AI analysis.");
@@ -21,7 +21,7 @@ const runAIDetection = (imagePath, options = {}) => {
         console.log("🚀 Running AI Detection");
         console.log("Command:", command);
 
-        exec(command, { timeout: 8000 }, (error, stdout, stderr) => {
+        exec(command, { timeout: 0 }, (error, stdout, stderr) => {
 
             if (error) {
                 console.warn("⚠️ AI Detection Error. Continuing without AI output.", error.message);

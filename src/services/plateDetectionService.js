@@ -22,7 +22,7 @@ function detectPlate(imagePath, options = {}) {
 
         console.log("Running Command:", command);
 
-        exec(command, { timeout: 8000 }, (error, stdout, stderr) => {
+        exec(command, { timeout: 0 }, (error, stdout, stderr) => {
 
             if (error) {
                 console.warn("⚠️ Plate detection failed. Continuing with original image.", error.message);
