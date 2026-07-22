@@ -3,14 +3,39 @@ const mysql = require("mysql2");
 const memoryStore = new Map();
 let useFallbackStorage = false;
 
-const connection = mysql.createConnection({
+// Use a pool instead of a single connection.
+// Pool connections are made lazily (on first query), not on startup.
+// This prevents blocking or crashing when DB is unreachable.
+const pool = mysql.createPool({
     host: process.env.DB_HOST || "localhost",
     port: Number(process.env.DB_PORT || 3306),
     user: process.env.DB_USER || "root",
     password: process.env.DB_PASSWORD || "",
     database: process.env.DB_NAME || "vehiclevision",
-    connectTimeout: 30000,
+    connectTimeout: 10000,
+    waitForConnections: true,
+    connectionLimit: 5,
+    queueLimit: 0,
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 10000,
 });
+
+// Expose a legacy `connection` shim so existing code that does `const db = require("./database"); db.query(...)` still works.
+const connection = {
+    query: (sql, params, callback) => {
+        if (useFallbackStorage) {
+            return handleFallbackQuery(sql, params, callback);
+        }
+        pool.query(sql, params, (err, result) => {
+            if (err) {
+                console.warn("⚠️ Falling back to in-memory storage because MySQL is unavailable:", err.message);
+                useFallbackStorage = true;
+                return handleFallbackQuery(sql, params, callback);
+            }
+            if (callback) callback(null, result);
+        });
+    },
+};
 
 const createRecord = (processingId, defaults = {}) => {
     const existing = memoryStore.get(processingId);
@@ -146,9 +171,9 @@ const query = (sql, params, callback) => {
         return handleFallbackQuery(sql, params, callback);
     }
 
-    return connection.query(sql, params, (err, result) => {
+    pool.query(sql, params, (err, result) => {
         if (err) {
-            console.warn("⚠️ Falling back to in-memory storage because MySQL is unavailable.");
+            console.warn("⚠️ Falling back to in-memory storage because MySQL is unavailable:", err.message);
             useFallbackStorage = true;
             return handleFallbackQuery(sql, params, callback);
         }
@@ -159,19 +184,15 @@ const query = (sql, params, callback) => {
     });
 };
 
-connection.on("error", (err) => {
-    console.warn("⚠️ MySQL connection error occurred. Switching to in-memory fallback storage:", err.message);
-    useFallbackStorage = true;
-});
-
-connection.connect((err) => {
+// Verify pool connectivity on startup (non-blocking)
+pool.getConnection((err, conn) => {
     if (err) {
-        console.warn("⚠️ MySQL not available. Using in-memory storage instead.");
+        console.warn("⚠️ MySQL pool not available. Using in-memory storage instead:", err.message);
         useFallbackStorage = true;
         return;
     }
-
-    console.log("✅ MySQL Connected Successfully");
+    console.log("✅ MySQL Pool Connected Successfully");
+    conn.release();
 });
 
 module.exports = {

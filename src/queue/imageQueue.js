@@ -1,8 +1,17 @@
-const { Queue } = require("bullmq");
-const connection = require("../config/redis");
+// imageQueue.js — Only create the BullMQ queue if an external Redis is configured.
+// If redis.js exports null, this module also exports null safely.
 
-const imageQueue = new Queue("image-processing", {
-    connection,
-});
+const redisConnection = require("../config/redis");
 
-module.exports = imageQueue;
+if (!redisConnection) {
+    console.log("ℹ️ Image queue disabled — no external Redis configured.");
+    module.exports = null;
+} else {
+    const { Queue } = require("bullmq");
+
+    const imageQueue = new Queue("image-processing", {
+        connection: redisConnection,
+    });
+
+    module.exports = imageQueue;
+}

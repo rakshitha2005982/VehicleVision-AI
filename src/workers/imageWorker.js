@@ -1,8 +1,3 @@
-console.log(__filename);
-
-const { Worker } = require("bullmq");
-const connection = require("../config/redis");
-
 const {
     updateImageAnalysis,
     updateVehicleNumber,
@@ -118,6 +113,7 @@ const processImageJob = async ({ processingId, imagePath }) => {
 
         console.log("🎉 Job Completed");
         return { success: true, processingId, aiOutput, vehicleNumber, analysis };
+
     } catch (error) {
         console.error("Processing Job Error:", error);
 
@@ -130,20 +126,32 @@ const processImageJob = async ({ processingId, imagePath }) => {
 };
 
 const createImageWorker = () => {
+    // IMPORTANT: Only load Redis / BullMQ if an external Redis host is configured.
+    // On Render free tier without Redis, redis.js exports null.
+    // This prevents ioredis from retrying to 127.0.0.1:6379 forever and crashing the server.
+    const redisConnection = require("../config/redis");
+
+    if (!redisConnection) {
+        console.log("ℹ️ BullMQ Worker disabled — no external Redis configured. Jobs run directly.");
+        return null;
+    }
+
     try {
-        if (!process.env.REDIS_HOST || process.env.REDIS_HOST === "localhost" || process.env.REDIS_HOST === "127.0.0.1") {
-            console.log("ℹ️ Standard local/in-memory mode: running jobs directly without Redis BullMQ worker.");
-            return null;
-        }
+        const { Worker } = require("bullmq");
 
         const worker = new Worker(
             "image-processing",
             async (job) => processImageJob(job.data),
-            { connection }
+            { connection: redisConnection }
         );
+
+        worker.on("error", (err) => {
+            console.warn("⚠️ BullMQ Worker error:", err.message);
+        });
 
         console.log("🚀 Image Worker Started");
         return worker;
+
     } catch (error) {
         console.warn("⚠️ Image worker could not start.", error.message);
         return null;
