@@ -1,7 +1,8 @@
 const { v4: uuidv4 } = require("uuid");
+const { spawn } = require("child_process");
+const path = require("path");
 
-const { saveImageMetadata } = require("../services/imageService");
-const { processImageJob } = require("../workers/imageWorker");
+const { saveImageMetadata, updateProcessingStatus } = require("../services/imageService");
 
 const saveMetadata = (imageData) => {
     return new Promise((resolve, reject) => {
@@ -13,6 +14,51 @@ const saveMetadata = (imageData) => {
             }
         });
     });
+};
+
+/**
+ * Spawns image processing as a SEPARATE child process.
+ *
+ * This is critical for Render (and any cloud host with strict memory limits):
+ * if the child process OOMs or crashes, the main HTTP server is NOT affected.
+ * The main server stays alive and continues serving API requests.
+ */
+const spawnProcessingJob = (processingId, imagePath) => {
+    const runnerPath = path.join(__dirname, "processJobRunner.js");
+    const jobData = JSON.stringify({ processingId, imagePath });
+
+    // Spawn a detached child process. It runs independently —
+    // the HTTP server does not wait for it and is not harmed if it crashes.
+    const child = spawn(process.execPath, [runnerPath, jobData], {
+        detached: true,
+        stdio: "pipe",
+    });
+
+    child.stdout.on("data", (data) => {
+        console.log(`[Job ${processingId}] ${data.toString().trim()}`);
+    });
+
+    child.stderr.on("data", (data) => {
+        console.error(`[Job ${processingId}] STDERR: ${data.toString().trim()}`);
+    });
+
+    child.on("close", (code) => {
+        if (code === 0) {
+            console.log(`✅ [Job ${processingId}] Child process completed successfully.`);
+        } else {
+            console.error(`❌ [Job ${processingId}] Child process exited with code ${code}. Marking as failed.`);
+            // Mark as failed in the store if the child died
+            updateProcessingStatus(processingId, "failed", () => {});
+        }
+    });
+
+    child.on("error", (err) => {
+        console.error(`❌ [Job ${processingId}] Failed to spawn child process:`, err.message);
+        updateProcessingStatus(processingId, "failed", () => {});
+    });
+
+    // Unref so the parent can exit independently of the child
+    child.unref();
 };
 
 const uploadImage = async (req, res) => {
@@ -37,10 +83,9 @@ const uploadImage = async (req, res) => {
     try {
         await saveMetadata(imageData);
 
-        void processImageJob({ processingId, imagePath: req.file.path })
-            .catch((error) => {
-                console.error("Background processing failed:", error);
-            });
+        // Spawn processing in an isolated child process —
+        // a crash or OOM there will NOT bring down the HTTP server.
+        spawnProcessingJob(processingId, req.file.path);
 
         return res.status(202).json({
             success: true,
@@ -52,7 +97,7 @@ const uploadImage = async (req, res) => {
         });
 
     } catch (error) {
-        console.error(error);
+        console.error("uploadImage error:", error);
 
         return res.status(500).json({
             success: false,

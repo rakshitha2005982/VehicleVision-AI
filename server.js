@@ -5,6 +5,9 @@ const cors = require("cors");
 const morgan = require("morgan");
 const path = require("path");
 
+// Load env FIRST before any other requires so DB/Redis config is available
+dotenv.config();
+
 process.on("uncaughtException", (err) => {
     console.error("❌ Uncaught Exception:", err);
 });
@@ -16,8 +19,6 @@ process.on("unhandledRejection", (reason, promise) => {
 const uploadRoutes = require("./src/routes/uploadRoutes");
 const statusRoutes = require("./src/routes/statusRoutes");
 const resultRoutes = require("./src/routes/resultRoutes");
-
-dotenv.config();
 
 console.log("DB_USER =", process.env.DB_USER);
 console.log("DB_HOST =", process.env.DB_HOST);
@@ -50,6 +51,11 @@ app.use((req, res, next) => {
 // Serve Frontend & Uploaded Files
 app.use(express.static(path.join(__dirname, "public")));
 app.use("/uploads", express.static(path.join(__dirname, "src", "uploads")));
+
+// Health check endpoint — Render uses this to verify the service is alive
+app.get("/health", (req, res) => {
+    res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+});
 
 // API Routes
 app.use("/api", uploadRoutes);
