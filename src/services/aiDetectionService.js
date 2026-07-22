@@ -1,21 +1,22 @@
 const { exec } = require("child_process");
+const fs = require("fs");
 const path = require("path");
 
-const runAIDetection = (imagePath) => {
+const runAIDetection = (imagePath, options = {}) => {
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
 
-        const pythonScript = path.join(
-            __dirname,
-            "ai",
-            "detect.py"
-        );
+        const scriptPath = options.scriptPath || path.join(__dirname, "ai", "detect.py");
 
-        // Use python on Windows and python3 on Linux (Render)
+        if (!fs.existsSync(scriptPath)) {
+            console.warn("⚠️ AI detection script not found. Skipping AI analysis.");
+            return resolve(null);
+        }
+
         const pythonExe =
             process.platform === "win32" ? "python" : "python3";
 
-        const command = `"${pythonExe}" "${pythonScript}" "${imagePath}"`;
+        const command = `"${pythonExe}" "${scriptPath}" "${imagePath}"`;
 
         console.log("🚀 Running AI Detection");
         console.log("Command:", command);
@@ -31,9 +32,8 @@ const runAIDetection = (imagePath) => {
             console.log("===================================");
 
             if (error) {
-                console.error("❌ AI Detection Error:");
-                console.error(error);
-                return reject(error);
+                console.warn("⚠️ AI Detection Error. Continuing without AI output.", error.message);
+                return resolve(null);
             }
 
             const lines = stdout.trim().split("\n");

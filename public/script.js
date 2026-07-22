@@ -47,65 +47,64 @@ uploadBtn.addEventListener("click", async () => {
     formData.append("image", file);
 
     try {
-
-        // Upload Image
         const uploadResponse = await fetch("/api/upload", {
-
             method: "POST",
             body: formData
-
         });
 
         const uploadData = await uploadResponse.json();
-
         const processingId = uploadData.processingId;
 
         if (!processingId) {
-
             loader.classList.add("hidden");
-
-            result.innerHTML = `
-                <h2>❌ Upload Failed</h2>
-            `;
-
+            result.innerHTML = `<h2>❌ Upload Failed</h2>`;
             return;
-
         }
 
-        // Poll Status
+        let interval = null;
 
-        const interval = setInterval(async () => {
-
-            const statusResponse = await fetch(`/api/status/${processingId}`);
-            const statusData = await statusResponse.json();
-
-            if (statusData.status === "completed") {
-
+        const stopPolling = () => {
+            if (interval) {
                 clearInterval(interval);
-
-                loader.classList.add("hidden");
-
-                const response = await fetch(`/api/result/${processingId}`);
-
-                const data = await response.json();
-
-                displayResult(data);
-
+                interval = null;
             }
+        };
 
+        interval = setInterval(async () => {
+            try {
+                const statusResponse = await fetch(`/api/status/${processingId}`);
+                const statusData = await statusResponse.json();
+
+                if (statusData.status === "completed") {
+                    stopPolling();
+                    loader.classList.add("hidden");
+
+                    const response = await fetch(`/api/result/${processingId}`);
+                    const data = await response.json();
+
+                    if (data.success) {
+                        displayResult(data);
+                    } else {
+                        result.innerHTML = `<h2>❌ Analysis Failed</h2><p>${data.message}</p>`;
+                    }
+                } else if (statusData.status === "failed") {
+                    stopPolling();
+                    loader.classList.add("hidden");
+                    result.innerHTML = `<h2>❌ Processing Failed</h2><p>${statusData.message || "The image could not be analyzed."}</p>`;
+                }
+            } catch (err) {
+                stopPolling();
+                loader.classList.add("hidden");
+                result.innerHTML = `<h2>❌ Upload Failed</h2><p>${err.message}</p>`;
+            }
         }, 2000);
 
-    }
-
-    catch (err) {
-
+    } catch (err) {
         loader.classList.add("hidden");
-
         result.innerHTML = `
             <h2>❌ Upload Failed</h2>
             <p>${err.message}</p>
         `;
-
     }
 
 });

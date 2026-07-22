@@ -26,169 +26,126 @@ const { runAIDetection } = require("../services/aiDetectionService");
 const { generateImageHash } = require("../utils/hashImage");
 const { validateVehicleNumber } = require("../utils/vehicleNumberValidator");
 
-const worker = new Worker(
-    "image-processing",
-    async (job) => {
+const processImageJob = async ({ processingId, imagePath }) => {
 
-        const { processingId, imagePath } = job.data;
+    console.log("🚀 Processing:", processingId);
 
-        console.log("🚀 Processing:", processingId);
+    try {
+        updateProcessingStatus(processingId, "processing", () => {});
+
+        const imageHash = generateImageHash(imagePath);
+
+        checkDuplicateImage(imageHash, (err, result) => {
+            if (err) {
+                console.error("Duplicate Check Error:", err);
+            } else if (result.length > 0) {
+                console.log("⚠️ Duplicate Image Detected");
+            } else {
+                console.log("✅ New Image");
+            }
+        });
+
+        updateImageHash(processingId, imageHash, (err) => {
+            if (err) {
+                console.error("Failed to save image hash:", err);
+            } else {
+                console.log("✅ Image hash saved");
+            }
+        });
+
+        let aiOutput = null;
 
         try {
-
-            // ==============================
-            // Update Status
-            // ==============================
-
-            updateProcessingStatus(processingId, "processing", () => {});
-
-            // ==============================
-            // Duplicate Image Detection
-            // ==============================
-
-            const imageHash = generateImageHash(imagePath);
-
-            checkDuplicateImage(imageHash, (err, result) => {
-
-                if (err) {
-                    console.error("Duplicate Check Error:", err);
-                } else {
-
-                    if (result.length > 0)
-                        console.log("⚠️ Duplicate Image Detected");
-                    else
-                        console.log("✅ New Image");
-
-                }
-
-            });
-
-            updateImageHash(processingId, imageHash, (err) => {
-
-                if (err)
-                    console.error("Failed to save image hash:", err);
-                else
-                    console.log("✅ Image hash saved");
-
-            });
-
-            // ==============================
-            // AI Detection
-            // ==============================
-
-            const aiOutput = await runAIDetection(imagePath);
-
+            aiOutput = await runAIDetection(imagePath);
             console.log("AI Output:", aiOutput);
+        } catch (error) {
+            console.warn("⚠️ AI detection skipped.", error.message);
+        }
 
-            // ==============================
-            // Plate Detection
-            // ==============================
+        let imageForOCR = imagePath;
 
-            let imageForOCR = imagePath;
+        try {
+            const plateImage = await detectPlate(imagePath);
+            console.log("Plate Detection:", plateImage);
 
-            try {
-
-                const plateImage = await detectPlate(imagePath);
-
-                console.log("Plate Detection:", plateImage);
-
-                if (
-                    plateImage &&
-                    plateImage !== "NOT_FOUND" &&
-                    plateImage !== "NO_IMAGE" &&
-                    plateImage !== "IMAGE_NOT_FOUND"
-                ) {
-                    imageForOCR = plateImage;
-                }
-
-            } catch (err) {
-
-                console.log("⚠️ Plate detection failed.");
-                console.log("Using original image for OCR.");
-
+            if (
+                plateImage &&
+                plateImage !== "NOT_FOUND" &&
+                plateImage !== "NO_IMAGE" &&
+                plateImage !== "IMAGE_NOT_FOUND"
+            ) {
+                imageForOCR = plateImage;
             }
-
-            // ==============================
-            // OCR
-            // ==============================
-
-            const fullText = await extractText(imageForOCR);
-
-            console.log("OCR Full Text:", fullText);
-
-            const vehicleNumber = await extractVehicleNumber(imageForOCR);
-
-            console.log("Vehicle Number:", vehicleNumber);
-
-            // ==============================
-            // Vehicle Number Validation
-            // ==============================
-
-            const isValidVehicleNumber =
-                validateVehicleNumber(vehicleNumber);
-
-            if (isValidVehicleNumber)
-                console.log("✅ Valid Indian Vehicle Number");
-            else
-                console.log("❌ Invalid Vehicle Number Format");
-
-            updateVehicleNumber(processingId, vehicleNumber, (err) => {
-
-                if (err)
-                    console.error(err);
-                else
-                    console.log("✅ Vehicle number saved");
-
-            });
-
-            // ==============================
-            // Image Analysis
-            // ==============================
-
-            const analysis = await analyzeImage(
-                imagePath,
-                fullText
-            );
-
-            updateImageAnalysis(processingId, analysis, (err) => {
-
-                if (err)
-                    console.error(err);
-                else
-                    console.log("✅ Image analysis saved");
-
-            });
-
-            // ==============================
-            // Completed
-            // ==============================
-
-            updateProcessingStatus(processingId, "completed", () => {
-
-                console.log("✅ Processing Completed");
-
-            });
-
-            console.log("🎉 Job Completed");
-
+        } catch (err) {
+            console.warn("⚠️ Plate detection failed. Using the original image for OCR.");
         }
 
-        catch (error) {
+        const fullText = await extractText(imageForOCR);
+        console.log("OCR Full Text:", fullText);
 
-            console.error(error);
+        const vehicleNumber = await extractVehicleNumber(imageForOCR);
+        console.log("Vehicle Number:", vehicleNumber);
 
-            updateProcessingStatus(processingId, "failed", () => {
+        const isValidVehicleNumber = validateVehicleNumber(vehicleNumber);
 
-                console.log("❌ Processing Failed");
-
-            });
-
+        if (isValidVehicleNumber) {
+            console.log("✅ Valid Indian Vehicle Number");
+        } else {
+            console.log("❌ Invalid Vehicle Number Format");
         }
 
-    },
-    {
-        connection,
+        updateVehicleNumber(processingId, vehicleNumber, (err) => {
+            if (err) {
+                console.error(err);
+            } else {
+                console.log("✅ Vehicle number saved");
+            }
+        });
+
+        const analysis = await analyzeImage(imagePath, fullText);
+
+        updateImageAnalysis(processingId, analysis, (err) => {
+            if (err) {
+                console.error(err);
+            } else {
+                console.log("✅ Image analysis saved");
+            }
+        });
+
+        updateProcessingStatus(processingId, "completed", () => {
+            console.log("✅ Processing Completed");
+        });
+
+        console.log("🎉 Job Completed");
+        return { success: true, processingId, aiOutput, vehicleNumber, analysis };
+    } catch (error) {
+        console.error(error);
+
+        updateProcessingStatus(processingId, "failed", () => {
+            console.log("❌ Processing Failed");
+        });
+
+        return { success: false, processingId, error: error.message };
     }
-);
+};
 
-console.log("🚀 Image Worker Started");
+const createImageWorker = () => {
+    try {
+        const worker = new Worker(
+            "image-processing",
+            async (job) => processImageJob(job.data),
+            { connection }
+        );
+
+        console.log("🚀 Image Worker Started");
+        return worker;
+    } catch (error) {
+        console.warn("⚠️ Image worker could not start.", error.message);
+        return null;
+    }
+};
+
+module.exports = {
+    processImageJob,
+    createImageWorker
+};

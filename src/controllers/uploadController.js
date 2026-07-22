@@ -1,14 +1,22 @@
 const { v4: uuidv4 } = require("uuid");
 
-const imageQueue = require("../queue/imageQueue");
+const { saveImageMetadata } = require("../services/imageService");
+const { processImageJob } = require("../workers/imageWorker");
 
-const {
-    saveImageMetadata
-} = require("../services/imageService");
+const saveMetadata = (imageData) => {
+    return new Promise((resolve, reject) => {
+        saveImageMetadata(imageData, (err) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve();
+            }
+        });
+    });
+};
 
-const uploadImage = (req, res) => {
+const uploadImage = async (req, res) => {
 
-    // Check whether an image was uploaded
     if (!req.file) {
         return res.status(400).json({
             success: false,
@@ -16,10 +24,8 @@ const uploadImage = (req, res) => {
         });
     }
 
-    // Generate Processing ID
     const processingId = uuidv4();
 
-    // Prepare image metadata
     const imageData = {
         processing_id: processingId,
         original_name: req.file.originalname,
@@ -28,51 +34,31 @@ const uploadImage = (req, res) => {
         status: "pending"
     };
 
-    // Save metadata
-    saveImageMetadata(imageData, async (err) => {
+    try {
+        await saveMetadata(imageData);
 
-        if (err) {
-            console.error(err);
-
-            return res.status(500).json({
-                success: false,
-                message: "Failed to save image metadata."
-            });
-        }
-
-        try {
-
-            // ✅ Add Job to Redis Queue
-            await imageQueue.add("process-image", {
-                processingId,
-                imagePath: req.file.path
+        void processImageJob({ processingId, imagePath: req.file.path })
+            .catch((error) => {
+                console.error("Background processing failed:", error);
             });
 
-            console.log("✅ Job added to Redis Queue");
+        return res.status(202).json({
+            success: true,
+            processingId,
+            status: "pending",
+            filename: req.file.filename,
+            originalName: req.file.originalname,
+            message: "Image uploaded successfully. Processing started."
+        });
 
-            // Return immediately
-            res.status(202).json({
-                success: true,
-                processingId,
-                status: "pending",
-                filename: req.file.filename,
-                originalName: req.file.originalname,
-                message: "Image uploaded successfully. Processing started."
-            });
+    } catch (error) {
+        console.error(error);
 
-        } catch (error) {
-
-            console.error(error);
-
-            res.status(500).json({
-                success: false,
-                message: "Failed to add job to Redis queue."
-            });
-
-        }
-
-    });
-
+        return res.status(500).json({
+            success: false,
+            message: "Failed to process the uploaded image."
+        });
+    }
 };
 
 module.exports = {

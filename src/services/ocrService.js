@@ -1,6 +1,31 @@
 const Tesseract = require("tesseract.js");
 const { preprocessImage } = require("./preprocessService");
 
+const runOCR = async (imagePath, timeoutMs = 10000) => {
+    const processedImage = await preprocessImage(imagePath);
+
+    const ocrTask = Tesseract.recognize(
+        processedImage,
+        "eng",
+        {
+            tessedit_pageseg_mode: 7,
+            tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        }
+    );
+
+    const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("OCR timed out")), timeoutMs);
+    });
+
+    const result = await Promise.race([ocrTask, timeoutPromise]);
+
+    return result.data.text
+        .replace(/\n/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toUpperCase();
+};
+
 // ===============================
 // Extract Vehicle Number
 // ===============================
@@ -8,25 +33,7 @@ const { preprocessImage } = require("./preprocessService");
 const extractVehicleNumber = async (imagePath) => {
 
     try {
-
-        const processedImage = await preprocessImage(imagePath);
-
-        console.log("Processed Image:", processedImage);
-
-        const result = await Tesseract.recognize(
-            processedImage,
-            "eng",
-            {
-                tessedit_pageseg_mode: 7,
-                tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-            }
-        );
-
-        const text = result.data.text
-            .replace(/\n/g, " ")
-            .replace(/\s+/g, " ")
-            .trim()
-            .toUpperCase();
+        const text = await runOCR(imagePath);
 
         console.log("OCR Text:", text);
 
@@ -42,10 +49,8 @@ const extractVehicleNumber = async (imagePath) => {
         return "NOT_DETECTED";
 
     } catch (error) {
-
-        console.error("OCR Error:", error);
+        console.warn("⚠️ OCR unavailable. Returning fallback value.", error.message);
         return "NOT_DETECTED";
-
     }
 
 };
@@ -57,34 +62,13 @@ const extractVehicleNumber = async (imagePath) => {
 const extractText = async (imagePath) => {
 
     try {
-
-        const processedImage = await preprocessImage(imagePath);
-
-        const result = await Tesseract.recognize(
-            processedImage,
-            "eng",
-            {
-                tessedit_pageseg_mode: 7,
-                tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-            }
-        );
-
-        const text = result.data.text
-            .replace(/\n/g, " ")
-            .replace(/\s+/g, " ")
-            .trim()
-            .toUpperCase();
-
+        const text = await runOCR(imagePath);
         console.log("Full OCR Text:", text);
-
         return text;
 
     } catch (error) {
-
-        console.error("OCR Text Extraction Error:", error);
-
+        console.warn("⚠️ OCR text extraction failed. Returning empty text.", error.message);
         return "";
-
     }
 
 };

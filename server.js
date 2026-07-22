@@ -19,7 +19,9 @@ console.log("DB_NAME =", process.env.DB_NAME);
 
 // Database Connection
 require("./src/config/database");
-require("./src/workers/imageWorker");
+const { createImageWorker } = require("./src/workers/imageWorker");
+
+createImageWorker();
 
 const app = express();
 

@@ -1,15 +1,21 @@
 const { exec } = require("child_process");
+const fs = require("fs");
 const path = require("path");
 
-function detectPlate(imagePath) {
+function detectPlate(imagePath, options = {}) {
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
 
-        const pythonScript = path.join(
+        const pythonScript = options.scriptPath || path.join(
             __dirname,
             "python",
             "detect_plate.py"
         );
+
+        if (!fs.existsSync(pythonScript)) {
+            console.warn("⚠️ Plate detection script not found. Skipping plate analysis.");
+            return resolve(null);
+        }
 
         const command = `py -3.14 "${pythonScript}" "${imagePath}"`;
 
@@ -18,25 +24,20 @@ function detectPlate(imagePath) {
         exec(command, (error, stdout, stderr) => {
 
             if (error) {
-                console.error("Python Error:");
-                console.error(stderr);
-                return reject(error);
+                console.warn("⚠️ Plate detection failed. Continuing with the original image.", stderr);
+                return resolve(null);
             }
 
             console.log("Python Output:");
             console.log(stdout);
 
-            // Split output into lines
             const lines = stdout
                 .trim()
                 .split("\n")
                 .map(line => line.trim())
                 .filter(line => line.length > 0);
 
-            // Last line is the cropped plate image path
-            let platePath = lines[lines.length - 1];
-
-            // Remove "Saved:" if present
+            let platePath = lines[lines.length - 1] || "";
             platePath = platePath.replace(/^Saved:\s*/, "").trim();
 
             console.log("Detected Plate Image:", platePath);
