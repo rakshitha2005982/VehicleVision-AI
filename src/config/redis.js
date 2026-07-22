@@ -10,19 +10,17 @@ const connection = new Redis({
     servername: process.env.REDIS_HOST,
   },
 
-  lazyConnect: true,
-  maxRetriesPerRequest: 1,
+  lazyConnect: false,
+  maxRetriesPerRequest: null,
   connectTimeout: 10000,
 });
 
-connection
-  .connect()
-  .then(() => {
-    console.log("✅ Redis Connected Successfully");
-  })
-  .catch((err) => {
-    console.error("❌ Redis Connection Failed");
-    console.error(err);
-  });
+connection.on("connect", () => {
+  console.log("✅ Redis Connected Successfully");
+});
+
+connection.on("error", (err) => {
+  console.error("❌ Redis Error:", err);
+});
 
 module.exports = connection;
