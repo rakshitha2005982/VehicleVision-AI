@@ -22,10 +22,10 @@ if (!isRedisConfigured) {
         username: process.env.REDIS_USERNAME || undefined,
         password: process.env.REDIS_PASSWORD || undefined,
         tls,
-        lazyConnect: true,
-        maxRetriesPerRequest: 3,
+        lazyConnect: false,
+        maxRetriesPerRequest: null,
         connectTimeout: 5000,
-        enableOfflineQueue: false,
+        enableReadyCheck: false,
     });
 
     connection.on("connect", () => {
