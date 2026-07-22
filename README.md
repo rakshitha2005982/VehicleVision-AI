@@ -1,42 +1,74 @@
-# 🚗 VehicleVision-AI Backend
+where to add img step in 
+
+# VehicleVision-AI
+
+
 
 An intelligent asynchronous media processing backend built using **Node.js**, **Express.js**, **MySQL**, **Redis (BullMQ)**, **Sharp**, **Tesseract OCR**, and **YOLO AI**.
 
 The system allows users to upload vehicle images, processes them asynchronously, performs multiple image quality checks, detects objects, extracts vehicle registration numbers using OCR, and stores the results in MySQL.
 
----
-
-# Features
-
-- Image Upload API
-- Asynchronous Processing using BullMQ & Redis
-- MySQL Database Integration
-- OCR-based Vehicle Number Extraction
-- Indian Vehicle Number Validation
-- YOLO AI Object Detection
-- Blur Detection
-- Brightness Analysis
-- Image Dimension Analysis
-- Duplicate Image Detection using SHA-256
-- Processing Status API
-- Processing Result API
+</div>
 
 ---
 
-# Tech Stack
+## Table of Contents
 
-## Backend
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Architecture](#architecture)
+- [Service Flow](#service-flow)
+- [Processing Flow](#processing-flow)
+- [Queue Strategy](#queue-strategy)
+- [Major Design Decisions](#major-design-decisions)
+- [Installation](#installation)
+- [Environment Variables](#environment-variables)
+- [API Endpoints](#api-endpoints)
+- [AI Usage Disclosure](#ai-usage-disclosure)
+- [Trade-offs](#trade-offs)
+- [Scalability Considerations](#scalability-considerations)
+- [Failure Handling](#failure-handling)
+- [Assumptions](#assumptions)
+- [Future Improvements](#future-improvements)
+- [Sample Workflow](#sample-workflow)
+- [Author](#author)
+
+---
+
+## Features
+
+| Feature | Description |
+|---|---|
+| Image Upload API | Upload vehicle images via a simple REST endpoint |
+| Asynchronous Processing | Powered by BullMQ & Redis for non-blocking workflows |
+| MySQL Integration | Stores metadata and analysis results |
+| OCR Extraction | Extracts vehicle registration numbers |
+| Indian Vehicle Number Validation | Regex-based format validation |
+| YOLO AI Object Detection | Detects objects within uploaded images |
+| Blur Detection | Flags low-quality/blurry images |
+| Brightness Analysis | Evaluates image lighting quality |
+| Image Dimension Analysis | Captures width/height metadata |
+| Duplicate Image Detection | SHA-256 hashing to prevent reprocessing |
+| Processing Status API | Track job progress in real time |
+| Processing Result API | Retrieve final analysis results |
+
+---
+
+## Tech Stack
+
+**Backend**
 - Node.js
 - Express.js
 
-## Database
+**Database**
 - MySQL
 
-## Queue
+**Queue**
 - Redis
 - BullMQ
 
-## AI / Image Processing
+**AI / Image Processing**
 - Sharp
 - Tesseract.js
 - YOLOv8
@@ -44,7 +76,7 @@ The system allows users to upload vehicle images, processes them asynchronously,
 
 ---
 
-# Project Structure
+## Project Structure
 
 ```
 VehicleVision-AI
@@ -68,7 +100,7 @@ VehicleVision-AI
 
 ---
 
-# Architecture
+## Architecture
 
 The project follows a modular backend architecture.
 
@@ -102,7 +134,7 @@ Status API / Result API
 
 ---
 
-# Service Flow
+## Service Flow
 
 1. User uploads a vehicle image.
 2. Server stores the uploaded image.
@@ -121,7 +153,7 @@ Status API / Result API
 
 ---
 
-# Processing Flow
+## Processing Flow
 
 ```
 Image Upload
@@ -151,14 +183,13 @@ Result API
 
 ---
 
-# Queue Strategy
+## Queue Strategy
 
 The upload API returns immediately after storing image metadata and adding the job to BullMQ.
 
 Heavy image processing tasks are executed by background workers.
 
-Advantages:
-
+**Advantages:**
 - Non-blocking API
 - Better scalability
 - Improved response time
@@ -166,7 +197,7 @@ Advantages:
 
 ---
 
-# Major Design Decisions
+## Major Design Decisions
 
 - Used BullMQ for asynchronous processing.
 - Redis acts as the message broker.
@@ -178,49 +209,43 @@ Advantages:
 
 ---
 
-# Installation
+## Installation
 
-Clone the repository
-
+**Clone the repository**
 ```bash
 git clone <repository-url>
 ```
 
-Go to project
-
+**Go to project**
 ```bash
 cd VehicleVision-AI
 ```
 
-Install dependencies
-
+**Install dependencies**
 ```bash
 npm install
 ```
 
-Start Redis
-
+**Start Redis**
 ```bash
 docker run -d --name redis-server -p 6379:6379 redis
 ```
 
-Start Backend
-
+**Start Backend**
 ```bash
 npm start
 ```
 
-Start Worker
-
+**Start Worker**
 ```bash
 node src/workers/imageWorker.js
 ```
 
 ---
 
-# Environment Variables
+## Environment Variables
 
-Create a `.env` file.
+Create a `.env` file in the project root:
 
 ```env
 PORT=5000
@@ -236,18 +261,16 @@ REDIS_PORT=6379
 
 ---
 
-# API Endpoints
+## API Endpoints
 
-## Upload Image
+### Upload Image
 
-### Request
-
+**Request**
 ```
 POST /api/upload
 ```
 
-### Response
-
+**Response**
 ```json
 {
   "success": true,
@@ -258,16 +281,14 @@ POST /api/upload
 
 ---
 
-## Processing Status
+### Processing Status
 
-### Request
-
+**Request**
 ```
 GET /api/status/:processingId
 ```
 
-### Response
-
+**Response**
 ```json
 {
   "success": true,
@@ -277,16 +298,14 @@ GET /api/status/:processingId
 
 ---
 
-## Processing Result
+### Processing Result
 
-### Request
-
+**Request**
 ```
 GET /api/result/:processingId
 ```
 
-### Response
-
+**Response**
 ```json
 {
   "success": true,
@@ -304,7 +323,7 @@ GET /api/result/:processingId
 
 ---
 
-# AI Usage Disclosure
+## AI Usage Disclosure
 
 AI tools were used during development for:
 
@@ -315,17 +334,17 @@ AI tools were used during development for:
 - Documentation generation
 - Debugging assistance
 
-### Where AI Output Was Incorrect
+**Where AI Output Was Incorrect**
 
 Some AI-generated OCR validation logic did not correctly handle Indian vehicle registration formats. Minor implementation suggestions also required modification to fit the project architecture.
 
-### Validation Process
+**Validation Process**
 
 All AI-generated code was manually reviewed, integrated, tested, and verified using Postman and the provided sample vehicle images before being accepted.
 
 ---
 
-# Trade-offs
+## Trade-offs
 
 Due to limited development time:
 
@@ -337,7 +356,7 @@ Due to limited development time:
 
 ---
 
-# Scalability Considerations
+## Scalability Considerations
 
 With additional development time:
 
@@ -350,7 +369,7 @@ With additional development time:
 
 ---
 
-# Failure Handling
+## Failure Handling
 
 The application handles failures by:
 
@@ -363,7 +382,7 @@ The application handles failures by:
 
 ---
 
-# Assumptions
+## Assumptions
 
 - Images are uploaded individually.
 - Supported image formats are JPG and PNG.
@@ -373,7 +392,7 @@ The application handles failures by:
 
 ---
 
-# Future Improvements
+## Future Improvements
 
 - Screenshot Detection
 - Photo-of-Photo Detection
@@ -390,7 +409,7 @@ The application handles failures by:
 
 ---
 
-# Sample Workflow
+## Sample Workflow
 
 1. Upload vehicle image.
 2. Receive Processing ID.
@@ -399,8 +418,7 @@ The application handles failures by:
 5. Display vehicle number and image analysis.
 
 ---
-
-## Output
+## Output Screenshots
 
 ### Dashboard
 
@@ -408,39 +426,44 @@ The application handles failures by:
 
 ---
 
-### Input Image 1
+### Test Case 1
 
-![Input 1](images/input1.png)
+**Input Image**
 
-### Analysis Result 1
+![Input Image 1](images/input1.png)
 
-![Output 1](images/output1.png)
+**Processing Result**
 
----
-
-### Input Image 2
-
-![Input 2](images/input2.png)
-
-### Analysis Result 2
-
-![Output 2](images/output2.png)
+![Processing Result 1](images/result1.png)
 
 ---
 
-### Input Image 3
+### Test Case 2
 
-![Input 3](images/input3.png)
+**Input Image**
 
-### Analysis Result 3
+![Input Image 2](images/input2.png)
 
-![Output 3](images/output3.png)
+**Processing Result**
+
+![Processing Result 2](images/result2.png)
 
 ---
 
+### Test Case 3
 
-# Author
+**Input Image**
+
+![Input Image 3](images/input3.png)
+
+**Processing Result**
+
+![Processing Result 3](images/result3.png)
+
+---
+
+## Author
 
 **Rakshitha**
 
-Backend Assignment – VehicleVision-AI
+Backend Assignment – VehicleVision-AI i want this content add the img part here add and give the replace readme code iam goin to add this in read me and remove privous one  is this correct?
