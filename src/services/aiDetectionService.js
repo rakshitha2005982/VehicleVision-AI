@@ -11,27 +11,37 @@ const runAIDetection = (imagePath) => {
             "detect.py"
         );
 
-        // Use python3 on Render, python on Windows
+        // Use python on Windows and python3 on Linux (Render)
         const pythonExe =
             process.platform === "win32" ? "python" : "python3";
 
         const command = `"${pythonExe}" "${pythonScript}" "${imagePath}"`;
 
+        console.log("🚀 Running AI Detection");
+        console.log("Command:", command);
+
         exec(command, (error, stdout, stderr) => {
 
-            if (error) {
-                console.error("AI Detection Error:", error);
-                return reject(error);
-            }
+            console.log("========== PYTHON OUTPUT ==========");
+            console.log("STDOUT:");
+            console.log(stdout);
 
-            if (stderr) {
-                console.error(stderr);
+            console.log("STDERR:");
+            console.log(stderr);
+            console.log("===================================");
+
+            if (error) {
+                console.error("❌ AI Detection Error:");
+                console.error(error);
+                return reject(error);
             }
 
             const lines = stdout.trim().split("\n");
             const outputPath = lines[lines.length - 1]
                 .replace("Saved: ", "")
                 .trim();
+
+            console.log("✅ AI Output Path:", outputPath);
 
             resolve(outputPath);
 
