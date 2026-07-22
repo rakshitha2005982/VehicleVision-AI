@@ -11,7 +11,9 @@ async function analyzeImage(imagePath, ocrText = "") {
 
         let brightness = 128;
         try {
+            // Resize to 100x100 thumbnail first to reduce memory and CPU usage
             const { data } = await sharp(imagePath)
+                .resize(100, 100, { fit: "inside" })
                 .greyscale()
                 .raw()
                 .toBuffer({ resolveWithObject: true });

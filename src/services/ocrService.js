@@ -16,7 +16,10 @@ const runOCR = async (imagePath, timeoutMs = 15000) => {
             "eng",
             {
                 tessedit_pageseg_mode: 7,
-                tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+                tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+                cachePath: path.join(__dirname, "../.."),
+                cacheMethod: "readOnly",
+                gzip: false
             }
         );
 
