@@ -30,7 +30,10 @@ const runAIDetection = (imagePath) => {
                 console.error(stderr);
             }
 
-            resolve(stdout.trim());
+            const lines = stdout.trim().split("\n");
+const outputPath = lines[lines.length - 1].replace("Saved: ", "").trim();
+
+resolve(outputPath);
 
         });
 

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>VehicleVision AI</title>
+
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="style.css">
+
+</head>
+
+<body>
+
+    <!-- Animated Background -->
+    <div class="blob blob1"></div>
+    <div class="blob blob2"></div>
+    <div class="blob blob3"></div>
+
+    <div class="container">
+
+        <!-- Header -->
+        <header>
+
+            <h1>🚗 VehicleVision AI</h1>
+
+            <p>
+                Intelligent Vehicle Image Inspection Platform
+            </p>
+
+            <span>
+                AI Powered • OCR • Metadata • Blur Detection • Screenshot Detection
+            </span>
+
+        </header>
+
+        <!-- Upload Card -->
+        <section class="card upload-card">
+
+            <h2>Upload Vehicle Image</h2>
+
+            <div class="upload-box">
+
+                <div class="upload-icon">
+                    📷
+                </div>
+
+                <p>
+                    Drag & Drop Image
+                </p>
+
+                <small>
+                    or click below to browse
+                </small>
+
+                <input
+                    type="file"
+                    id="image"
+                    accept="image/*"
+                >
+
+                <button id="uploadBtn">
+
+                    🚀 Analyze Vehicle
+
+                </button>
+
+            </div>
+
+        </section>
+
+        <!-- Preview -->
+
+        <section class="card">
+
+            <h2>Preview</h2>
+
+            <img
+                id="preview"
+                src=""
+                alt="Preview"
+            >
+
+        </section>
+
+        <!-- Loader -->
+
+        <section
+            id="loader"
+            class="card hidden"
+        >
+
+            <h2>🤖 AI Processing...</h2>
+
+            <div class="progress">
+
+                <div class="progress-bar"></div>
+
+            </div>
+
+            <ul>
+
+                <li>✔ Uploading Image</li>
+
+                <li>✔ Detecting Blur</li>
+
+                <li>✔ Running OCR</li>
+
+                <li>✔ Reading Metadata</li>
+
+                <li>✔ Duplicate Detection</li>
+
+                <li>✔ Screenshot Detection</li>
+
+            </ul>
+
+        </section>
+
+        <!-- Result -->
+
+        <section
+            id="result"
+            class="card"
+        >
+
+            <h2>Analysis Report</h2>
+
+            <p>
+
+                Upload an image to begin AI analysis.
+
+            </p>
+
+        </section>
+
+    </div>
+
+    <script src="script.js"></script>
+
+</body>
+
+</html>

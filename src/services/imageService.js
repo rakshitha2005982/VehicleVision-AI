@@ -2,6 +2,7 @@ const db = require("../config/database");
 
 // Save uploaded image metadata
 const saveImageMetadata = (imageData, callback) => {
+
   const sql = `
     INSERT INTO images
     (processing_id, original_name, stored_name, file_path, status)
@@ -30,7 +31,10 @@ const updateImageAnalysis = (processingId, analysis, callback) => {
       width = ?,
       height = ?,
       brightness_score = ?,
-      blur_score = ?
+      blur_score = ?,
+      screenshot_detected = ?,
+      metadata_json = ?,
+      confidence_score = ?
     WHERE processing_id = ?
   `;
 
@@ -41,6 +45,9 @@ const updateImageAnalysis = (processingId, analysis, callback) => {
       analysis.height,
       analysis.brightnessScore,
       analysis.blurScore,
+      analysis.screenshotDetected,
+      JSON.stringify(analysis.metadata),
+      analysis.confidenceScore,
       processingId,
     ],
     callback
@@ -99,7 +106,6 @@ const getProcessingStatus = (processingId, callback) => {
     [processingId],
     callback
   );
-
 };
 
 // Get complete processing result
@@ -116,10 +122,9 @@ const getProcessingResult = (processingId, callback) => {
     [processingId],
     callback
   );
-
 };
 
-// ✅ NEW: Save image hash
+// Save image hash
 const updateImageHash = (processingId, imageHash, callback) => {
 
   const sql = `
@@ -136,10 +141,9 @@ const updateImageHash = (processingId, imageHash, callback) => {
     ],
     callback
   );
-
 };
 
-// ✅ NEW: Check duplicate image
+// Check duplicate image
 const checkDuplicateImage = (imageHash, callback) => {
 
   const sql = `
@@ -153,7 +157,6 @@ const checkDuplicateImage = (imageHash, callback) => {
     [imageHash],
     callback
   );
-
 };
 
 module.exports = {
@@ -163,8 +166,6 @@ module.exports = {
   updateProcessingStatus,
   getProcessingStatus,
   getProcessingResult,
-
-  // ✅ NEW
   updateImageHash,
   checkDuplicateImage,
 };

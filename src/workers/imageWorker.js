@@ -12,7 +12,16 @@ const {
 } = require("../services/imageService");
 
 const { analyzeImage } = require("../services/imageAnalysisService");
-const { extractVehicleNumber } = require("../services/ocrService");
+
+const {
+    extractVehicleNumber,
+    extractText
+} = require("../services/ocrService");
+
+const {
+    detectPlate
+} = require("../services/plateDetectionService");
+
 const { runAIDetection } = require("../services/aiDetectionService");
 const { generateImageHash } = require("../utils/hashImage");
 const { validateVehicleNumber } = require("../utils/vehicleNumberValidator");
@@ -27,56 +36,39 @@ const worker = new Worker(
 
         try {
 
-            // Update status
+            // ==============================
+            // Update Status
+            // ==============================
+
             updateProcessingStatus(processingId, "processing", () => {});
 
             // ==============================
             // Duplicate Image Detection
             // ==============================
 
-            // Generate SHA-256 hash
             const imageHash = generateImageHash(imagePath);
 
-            // Check duplicate
             checkDuplicateImage(imageHash, (err, result) => {
 
                 if (err) {
                     console.error("Duplicate Check Error:", err);
                 } else {
 
-                    if (result.length > 0) {
+                    if (result.length > 0)
                         console.log("⚠️ Duplicate Image Detected");
-                    } else {
+                    else
                         console.log("✅ New Image");
-                    }
 
                 }
 
             });
 
-            // Save image hash
             updateImageHash(processingId, imageHash, (err) => {
 
-                if (err) {
-                    console.error("Failed to save image hash:", err);
-                } else {
-                    console.log("✅ Image hash saved");
-                }
-
-            });
-
-            // ==============================
-            // Image Analysis
-            // ==============================
-
-            const analysis = await analyzeImage(imagePath);
-
-            updateImageAnalysis(processingId, analysis, (err) => {
-
                 if (err)
-                    console.error(err);
+                    console.error("Failed to save image hash:", err);
                 else
-                    console.log("✅ Image analysis saved");
+                    console.log("✅ Image hash saved");
 
             });
 
@@ -89,21 +81,56 @@ const worker = new Worker(
             console.log("AI Output:", aiOutput);
 
             // ==============================
+            // Plate Detection
+            // ==============================
+
+            let imageForOCR = imagePath;
+
+            try {
+
+                const plateImage = await detectPlate(imagePath);
+
+                console.log("Plate Detection:", plateImage);
+
+                if (
+                    plateImage &&
+                    plateImage !== "NOT_FOUND" &&
+                    plateImage !== "NO_IMAGE" &&
+                    plateImage !== "IMAGE_NOT_FOUND"
+                ) {
+                    imageForOCR = plateImage;
+                }
+
+            } catch (err) {
+
+                console.log("⚠️ Plate detection failed.");
+                console.log("Using original image for OCR.");
+
+            }
+
+            // ==============================
             // OCR
             // ==============================
 
-            const vehicleNumber = await extractVehicleNumber(imagePath);
+            const fullText = await extractText(imageForOCR);
+
+            console.log("OCR Full Text:", fullText);
+
+            const vehicleNumber = await extractVehicleNumber(imageForOCR);
 
             console.log("Vehicle Number:", vehicleNumber);
 
-            // Validate Vehicle Number
-            const isValidVehicleNumber = validateVehicleNumber(vehicleNumber);
+            // ==============================
+            // Vehicle Number Validation
+            // ==============================
 
-            if (isValidVehicleNumber) {
+            const isValidVehicleNumber =
+                validateVehicleNumber(vehicleNumber);
+
+            if (isValidVehicleNumber)
                 console.log("✅ Valid Indian Vehicle Number");
-            } else {
+            else
                 console.log("❌ Invalid Vehicle Number Format");
-            }
 
             updateVehicleNumber(processingId, vehicleNumber, (err) => {
 
@@ -115,21 +142,45 @@ const worker = new Worker(
             });
 
             // ==============================
-            // Processing Completed
+            // Image Analysis
+            // ==============================
+
+            const analysis = await analyzeImage(
+                imagePath,
+                fullText
+            );
+
+            updateImageAnalysis(processingId, analysis, (err) => {
+
+                if (err)
+                    console.error(err);
+                else
+                    console.log("✅ Image analysis saved");
+
+            });
+
+            // ==============================
+            // Completed
             // ==============================
 
             updateProcessingStatus(processingId, "completed", () => {
+
                 console.log("✅ Processing Completed");
+
             });
 
             console.log("🎉 Job Completed");
 
-        } catch (error) {
+        }
+
+        catch (error) {
 
             console.error(error);
 
             updateProcessingStatus(processingId, "failed", () => {
+
                 console.log("❌ Processing Failed");
+
             });
 
         }
