@@ -70,9 +70,25 @@ uploadBtn.addEventListener("click", async () => {
             }
         };
 
+        let consecutiveErrors = 0;
+        const maxErrors = 5;
+
         interval = setInterval(async () => {
             try {
                 const statusResponse = await fetch(`/api/status/${processingId}`);
+
+                if (!statusResponse.ok) {
+                    consecutiveErrors++;
+                    console.warn(`Transient polling status error (${statusResponse.status}). Retry ${consecutiveErrors}/${maxErrors}`);
+                    if (consecutiveErrors >= maxErrors) {
+                        stopPolling();
+                        loader.classList.add("hidden");
+                        result.innerHTML = `<h2>❌ Upload Failed</h2><p>Server error ${statusResponse.status}. Please check backend logs.</p>`;
+                    }
+                    return;
+                }
+
+                consecutiveErrors = 0;
                 const statusData = await statusResponse.json();
 
                 if (statusData.status === "completed") {
@@ -80,6 +96,11 @@ uploadBtn.addEventListener("click", async () => {
                     loader.classList.add("hidden");
 
                     const response = await fetch(`/api/result/${processingId}`);
+                    if (!response.ok) {
+                        result.innerHTML = `<h2>❌ Analysis Failed</h2><p>Could not fetch results from server.</p>`;
+                        return;
+                    }
+
                     const data = await response.json();
 
                     if (data.success) {
@@ -93,9 +114,13 @@ uploadBtn.addEventListener("click", async () => {
                     result.innerHTML = `<h2>❌ Processing Failed</h2><p>${statusData.message || "The image could not be analyzed."}</p>`;
                 }
             } catch (err) {
-                stopPolling();
-                loader.classList.add("hidden");
-                result.innerHTML = `<h2>❌ Upload Failed</h2><p>${err.message}</p>`;
+                consecutiveErrors++;
+                console.warn(`Polling error: ${err.message}. Retry ${consecutiveErrors}/${maxErrors}`);
+                if (consecutiveErrors >= maxErrors) {
+                    stopPolling();
+                    loader.classList.add("hidden");
+                    result.innerHTML = `<h2>❌ Upload Failed</h2><p>${err.message}</p>`;
+                }
             }
         }, 2000);
 

@@ -17,19 +17,19 @@ function detectPlate(imagePath, options = {}) {
             return resolve(null);
         }
 
-        const command = `py -3.14 "${pythonScript}" "${imagePath}"`;
+        const pythonExe = process.env.PYTHON_PATH || (process.platform === "win32" ? "python" : "python3");
+        const command = `"${pythonExe}" "${pythonScript}" "${imagePath}"`;
 
         console.log("Running Command:", command);
 
-        exec(command, (error, stdout, stderr) => {
+        exec(command, { timeout: 8000 }, (error, stdout, stderr) => {
 
             if (error) {
-                console.warn("⚠️ Plate detection failed. Continuing with the original image.", stderr);
+                console.warn("⚠️ Plate detection failed. Continuing with original image.", error.message);
                 return resolve(null);
             }
 
-            console.log("Python Output:");
-            console.log(stdout);
+            console.log("Python Output:", stdout.trim());
 
             const lines = stdout
                 .trim()
@@ -39,6 +39,11 @@ function detectPlate(imagePath, options = {}) {
 
             let platePath = lines[lines.length - 1] || "";
             platePath = platePath.replace(/^Saved:\s*/, "").trim();
+
+            if (platePath.includes("NOT_FOUND") || platePath.includes("NO_IMAGE") || platePath.includes("IMAGE_NOT_FOUND")) {
+                console.log("⚠️ Plate detection returned no plate.");
+                return resolve(null);
+            }
 
             console.log("Detected Plate Image:", platePath);
 

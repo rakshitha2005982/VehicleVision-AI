@@ -159,6 +159,11 @@ const query = (sql, params, callback) => {
     });
 };
 
+connection.on("error", (err) => {
+    console.warn("⚠️ MySQL connection error occurred. Switching to in-memory fallback storage:", err.message);
+    useFallbackStorage = true;
+});
+
 connection.connect((err) => {
     if (err) {
         console.warn("⚠️ MySQL not available. Using in-memory storage instead.");

@@ -29,25 +29,34 @@ const getResult = (req, res) => {
         console.log("DATABASE RESULT:");
         console.log(data);
 
+        let metadataObj = {};
+        try {
+            metadataObj = typeof data.metadata_json === "string"
+                ? JSON.parse(data.metadata_json)
+                : (data.metadata_json || {});
+        } catch (e) {
+            metadataObj = {};
+        }
+
         res.status(200).json({
             success: true,
             processingId: data.processing_id,
             status: data.status,
             originalName: data.original_name,
             filename: data.stored_name,
-            vehicleNumber: data.vehicle_number,
+            vehicleNumber: data.vehicle_number || "NOT_DETECTED",
 
             analysis: {
-                width: data.width,
-                height: data.height,
-                brightnessScore: data.brightness_score,
-                blurScore: data.blur_score,
+                width: data.width || 0,
+                height: data.height || 0,
+                brightnessScore: data.brightness_score || 0,
+                blurScore: data.blur_score || 0,
 
                 screenshotDetected: Boolean(data.screenshot_detected),
 
-                metadata: data.metadata_json || {},
+                metadata: metadataObj,
 
-                confidenceScore: data.confidence_score
+                confidenceScore: data.confidence_score || 0
             }
         });
 

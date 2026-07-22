@@ -83,7 +83,7 @@ const processImageJob = async ({ processingId, imagePath }) => {
         const fullText = await extractText(imageForOCR);
         console.log("OCR Full Text:", fullText);
 
-        const vehicleNumber = await extractVehicleNumber(imageForOCR);
+        const vehicleNumber = await extractVehicleNumber(fullText);
         console.log("Vehicle Number:", vehicleNumber);
 
         const isValidVehicleNumber = validateVehicleNumber(vehicleNumber);
@@ -119,7 +119,7 @@ const processImageJob = async ({ processingId, imagePath }) => {
         console.log("🎉 Job Completed");
         return { success: true, processingId, aiOutput, vehicleNumber, analysis };
     } catch (error) {
-        console.error(error);
+        console.error("Processing Job Error:", error);
 
         updateProcessingStatus(processingId, "failed", () => {
             console.log("❌ Processing Failed");
@@ -131,6 +131,11 @@ const processImageJob = async ({ processingId, imagePath }) => {
 
 const createImageWorker = () => {
     try {
+        if (!process.env.REDIS_HOST || process.env.REDIS_HOST === "localhost" || process.env.REDIS_HOST === "127.0.0.1") {
+            console.log("ℹ️ Standard local/in-memory mode: running jobs directly without Redis BullMQ worker.");
+            return null;
+        }
+
         const worker = new Worker(
             "image-processing",
             async (job) => processImageJob(job.data),
