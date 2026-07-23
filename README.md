@@ -1,4 +1,4 @@
-where to add img step in 
+
 
 # VehicleVision-AI
 
@@ -7,6 +7,10 @@ where to add img step in
 An intelligent asynchronous media processing backend built using **Node.js**, **Express.js**, **MySQL**, **Redis (BullMQ)**, **Sharp**, **Tesseract OCR**, and **YOLO AI**.
 
 The system allows users to upload vehicle images, processes them asynchronously, performs multiple image quality checks, detects objects, extracts vehicle registration numbers using OCR, and stores the results in MySQL.
+
+**Deployed link:** https://vehiclevision-ai.onrender.com
+
+
 
 </div>
 
